@@ -81,12 +81,36 @@ def get_all_documents(filters=None):
 
 def delete_document(document_id):
     conn = get_db_connection()
-    # Get file path to delete the file from uploads/
-    cursor62 = conn.execute('SELECT file_path FROM documents WHERE id = ?', (document_id,))
-    result = cursor62.fetchone()
+    cursor = conn.execute('SELECT file_path FROM documents WHERE id = ?', (document_id,))
+    result = cursor.fetchone()
     file_path = result['file_path'] if result else None
-    # Delete from database
     conn.execute('DELETE FROM documents WHERE id = ?', (document_id,))
     conn.commit()
     conn.close()
     return file_path
+
+def get_dashboard_stats():
+    conn = get_db_connection()
+    stats = {
+        'total_documents': conn.execute('SELECT COUNT(*) FROM documents').fetchone()[0],
+        'documents_by_type': conn.execute('''
+            SELECT dt.type_name, COUNT(d.id) as count
+            FROM documents d
+            JOIN document_types dt ON d.document_type_id = dt.id
+            GROUP BY dt.id, dt.type_name
+        ''').fetchall(),
+        'documents_by_project': conn.execute('''
+            SELECT p.project_name, COUNT(d.id) as count
+            FROM documents d
+            JOIN projects p ON d.project_id = p.id
+            GROUP BY p.id, p.project_name
+        ''').fetchall(),
+        'documents_by_status': conn.execute('''
+            SELECT st.status_name, COUNT(d.id) as count
+            FROM documents d
+            JOIN statuses st ON d.status_id = st.id
+            GROUP BY st.id, st.status_name
+        ''').fetchall()
+    }
+    conn.close()
+    return stats

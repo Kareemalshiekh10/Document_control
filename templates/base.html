@@ -5,12 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Construction Document Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="bg-gray-100">
     <nav class="bg-blue-600 text-white p-4">
-        <div class="container mx-auto">
+        <div class="container mx-auto flex justify-between items-center">
             <h1 class="text-2xl font-bold">Construction Document Control</h1>
+            <div class="space-x-4">
+                <a href="{{ url_for('index') }}" class="hover:underline">Home</a>
+                <a href="{{ url_for('dashboard') }}" class="hover:underline">Dashboard</a>
+            </div>
         </div>
     </nav>
     <div class="container mx-auto p-4">

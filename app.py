@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 import os
-from database import get_document_types, get_projects, get_sites, get_statuses, get_users, insert_document, get_all_documents, delete_document
+from database import get_document_types, get_projects, get_sites, get_statuses, get_users, insert_document, get_all_documents, delete_document, get_dashboard_stats
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
@@ -62,14 +62,19 @@ def upload_file():
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
         insert_document(filename, file_path, document_type_id, project_id, site_id, status_id, uploaded_by)
-        return redirect(url_for('index'))
+        return redirect(url_for('index', success='Document uploaded successfully'))
 
 @app.route('/delete/<int:document_id>', methods=['POST'])
 def delete_file(document_id):
     file_path = delete_document(document_id)
     if file_path and os.path.exists(file_path):
         os.remove(file_path)
-    return redirect(url_for('index'))
+    return redirect(url_for('index', success='Document deleted successfully'))
+
+@app.route('/dashboard')
+def dashboard():
+    stats = get_dashboard_stats()
+    return render_template('dashboard.html', stats=stats)
 
 if __name__ == '__main__':
     app.run(debug=True)
