@@ -1,3 +1,29 @@
+// Custom popup function
+function showPopup(message, type = 'success') {
+    const popup = document.getElementById('custom-popup');
+    const popupMessage = document.getElementById('popup-message');
+    if (!popup || !popupMessage) return;
+
+    popupMessage.textContent = message;
+    popup.classList.remove('hidden', 'success', 'error');
+    popup.classList.add(type);
+
+    // Show popup
+    popup.style.display = 'flex';
+
+    // Close on button click
+    document.getElementById('popup-close')?.addEventListener('click', () => {
+        popup.style.display = 'none';
+    }, { once: true });
+
+    // Close on overlay click
+    popup.addEventListener('click', (e) => {
+        if (e.target === popup) {
+            popup.style.display = 'none';
+        }
+    }, { once: true });
+}
+
 // Upload form validation and submission handling
 document.getElementById('upload-form')?.addEventListener('submit', function (e) {
     const fileInput = document.getElementById('file');
@@ -7,12 +33,12 @@ document.getElementById('upload-form')?.addEventListener('submit', function (e) 
     // Validate file
     if (!file) {
         e.preventDefault();
-        alert('Please select a file to upload.');
+        showPopup('Please select a file to upload.', 'error');
         return;
     }
     if (!file.name.toLowerCase().endsWith('.pdf')) {
         e.preventDefault();
-        alert('Only PDF files are allowed.');
+        showPopup('Only PDF files are allowed.', 'error');
         return;
     }
 
@@ -41,10 +67,14 @@ document.querySelectorAll('.delete-form').forEach(form => {
     });
 });
 
-// Show success message if present (e.g., after upload/delete)
+// Show success message if present (e.g., after upload/delete) and clear URL parameter
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('success')) {
-    alert(urlParams.get('success'));
+    showPopup(urlParams.get('success'), 'success');
+    // Remove the 'success' parameter from the URL to prevent popup on refresh
+    urlParams.delete('success');
+    const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    history.replaceState(null, '', newUrl);
 }
 
 // Dashboard chart initialization

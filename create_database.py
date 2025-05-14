@@ -19,8 +19,7 @@ cursor.execute('''
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS projects (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        project_name TEXT NOT NULL UNIQUE,
-        start_date TEXT
+        project_name TEXT NOT NULL UNIQUE
     )
 ''')
 
@@ -28,8 +27,7 @@ cursor.execute('''
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS sites (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        site_name TEXT NOT NULL UNIQUE,
-        location TEXT
+        site_name TEXT NOT NULL UNIQUE
     )
 ''')
 
@@ -45,8 +43,7 @@ cursor.execute('''
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        role TEXT NOT NULL
+        username TEXT NOT NULL UNIQUE
     )
 ''')
 
@@ -54,14 +51,14 @@ cursor.execute('''
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS documents (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        file_name TEXT NOT NULL,
+        filename TEXT NOT NULL,
         file_path TEXT NOT NULL,
-        upload_date TEXT NOT NULL,
-        document_type_id INTEGER NOT NULL,
-        project_id INTEGER NOT NULL,
-        site_id INTEGER NOT NULL,
-        status_id INTEGER NOT NULL,
-        uploaded_by INTEGER NOT NULL,
+        document_type_id INTEGER,
+        project_id INTEGER,
+        site_id INTEGER,
+        status_id INTEGER,
+        uploaded_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (document_type_id) REFERENCES document_types(id),
         FOREIGN KEY (project_id) REFERENCES projects(id),
         FOREIGN KEY (site_id) REFERENCES sites(id),
@@ -76,27 +73,21 @@ cursor.executemany('INSERT OR IGNORE INTO document_types (type_name) VALUES (?)'
                    [('Blueprint',), ('Permit',), ('Contract',)])
 
 # Projects
-cursor.executemany('INSERT OR IGNORE INTO projects (project_name, start_date) VALUES (?, ?)',
-                   [('Downtown Tower', '2025-01-01'), ('River Bridge', '2025-03-15')])
+cursor.executemany('INSERT OR IGNORE INTO projects (project_name) VALUES (?)',
+                   [('Downtown Tower',), ('River Bridge',)])
 
 # Sites
-cursor.executemany('INSERT OR IGNORE INTO sites (site_name, location) VALUES (?, ?)',
-                   [('Site A', '123 Main St'), ('Site B', '456 River Rd')])
+cursor.executemany('INSERT OR IGNORE INTO sites (site_name) VALUES (?)',
+                   [('Site A',), ('Site B',)])
 
 # Statuses
 cursor.executemany('INSERT OR IGNORE INTO statuses (status_name) VALUES (?)',
                    [('Draft',), ('Approved',), ('Rejected',)])
 
 # Users
-cursor.executemany('INSERT OR IGNORE INTO users (username, role) VALUES (?, ?)',
-                   [('john_doe', 'Manager'), ('jane_smith', 'Worker')])
+cursor.executemany('INSERT OR IGNORE INTO users (username) VALUES (?)',
+                   [('john_doe',), ('jane_smith',)])
 
-# Documents (sample document)
-cursor.execute('''
-    INSERT INTO documents (file_name, file_path, upload_date, document_type_id, project_id, site_id, status_id, uploaded_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-''', ('site_plan.pdf', 'uploads/site_plan.pdf', '2025-05-14',
-      1, 1, 1, 1, 1))  # Blueprint, Downtown Tower, Site A, Draft, john_doe
 
 # Commit changes
 conn.commit()
@@ -130,7 +121,7 @@ for row in cursor.fetchall():
 
 print("\nDocuments:")
 cursor.execute('''
-    SELECT d.id, d.file_name, dt.type_name, p.project_name, s.site_name, st.status_name, u.username
+    SELECT d.id, d.filename, dt.type_name, p.project_name, s.site_name, st.status_name, u.username, d.created_at
     FROM documents d
     JOIN document_types dt ON d.document_type_id = dt.id
     JOIN projects p ON d.project_id = p.id

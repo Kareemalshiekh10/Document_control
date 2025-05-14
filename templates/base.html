@@ -10,11 +10,14 @@
 </head>
 <body class="bg-gray-100">
     <nav class="bg-blue-600 text-white p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold">Construction Document Control</h1>
-            <div class="space-x-4">
-                <a href="{{ url_for('index') }}" class="hover:underline">Home</a>
-                <a href="{{ url_for('dashboard') }}" class="hover:underline">Dashboard</a>
+        <div class="container mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="HSB Logo" class="navbar-logo">
+                <h1 class="text-2xl font-bold">Construction Document Control</h1>
+            </div>
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}" class="nav-link">Home</a>
+                <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
             </div>
         </div>
     </nav>
@@ -22,6 +25,15 @@
         {% block content %}
         {% endblock %}
     </div>
+
+    <!-- Custom Popup -->
+    <div id="custom-popup" class="popup hidden">
+        <div class="popup-content">
+            <p id="popup-message" class="text-center"></p>
+            <button id="popup-close" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Close</button>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </body>
 </html>
