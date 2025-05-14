@@ -11,10 +11,6 @@ nav {
     transition: background-color 0.3s ease;
 }
 
-/* nav:hover {
-    background-color: #2b6cb0;
-}
- */
 /* Navbar Logo */
 nav .navbar-logo {
     height: 40px; /* Default height */
@@ -133,16 +129,21 @@ nav .navbar-logo:hover {
     font-size: 0.875rem;
 }
 
+.table-container .preview-btn {
+    margin-left: 0; /* Remove margin since we're using flex space-x-2 */
+}
+
 /* Loading spinner */
 .loading-spinner {
     display: none;
     border: 4px solid #e2e8f0;
     border-top: 4px solid #3182ce;
     border-radius: 50%;
-    width: 24px;
-    height: 24px;
+    width: 16px; /* Smaller spinner for inline alignment */
+    height: 16px;
     animation: spin 1s linear infinite;
-    margin-left: 1rem;
+    margin-left: 0.5rem;
+    vertical-align: middle;
 }
 
 @keyframes spin {
@@ -212,6 +213,26 @@ canvas {
     text-align: center;
 }
 
+.preview-modal-content {
+    max-width: 90%;
+    width: 1000px;
+    max-height: 90vh;
+    height: 700px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+}
+
+.pdf-canvas {
+    width: 100%;
+    max-width: 900px;
+    height: auto;
+    max-height: 600px;
+    border: 1px solid #e2e8f0;
+}
+
 .popup.success .popup-content {
     border-left: 4px solid #10b981;
 }
@@ -250,6 +271,16 @@ canvas {
     .popup-content {
         padding: 1rem;
         max-width: 300px;
+    }
+    .preview-modal-content {
+        max-width: 95%;
+        width: 100%;
+        height: 500px;
+        padding: 1rem;
+    }
+    .pdf-canvas {
+        max-width: 100%;
+        max-height: 400px;
     }
     nav .navbar-logo {
         height: 32px; /* Smaller logo on mobile */

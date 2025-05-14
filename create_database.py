@@ -1,7 +1,7 @@
 import sqlite3
 
-# Connect to SQLite database
-conn = sqlite3.connect('documents.db')
+# Connect to SQLite database with absolute path
+conn = sqlite3.connect(r'c:\Users\alshi\OneDrive\Desktop\Document_control\documents.db')
 cursor = conn.cursor()
 
 # Drop the old documents table if it exists
@@ -88,7 +88,6 @@ cursor.executemany('INSERT OR IGNORE INTO statuses (status_name) VALUES (?)',
 cursor.executemany('INSERT OR IGNORE INTO users (username) VALUES (?)',
                    [('john_doe',), ('jane_smith',)])
 
-
 # Commit changes
 conn.commit()
 
@@ -131,6 +130,11 @@ cursor.execute('''
 ''')
 for row in cursor.fetchall():
     print(row)
+
+# Additional check for document count
+cursor.execute('SELECT COUNT(*) FROM documents')
+doc_count = cursor.fetchone()[0]
+print(f"\nTotal documents in database after setup: {doc_count}")
 
 # Close connection
 conn.close()

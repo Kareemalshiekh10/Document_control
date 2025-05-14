@@ -1,8 +1,11 @@
+// Document Control JavaScript
+
 // Custom popup function
 function showPopup(message, type = 'success') {
     const popup = document.getElementById('custom-popup');
     const popupMessage = document.getElementById('popup-message');
-    if (!popup || !popupMessage) return;
+    const popupOkButton = document.getElementById('popup-ok');
+    if (!popup || !popupMessage || !popupOkButton) return;
 
     popupMessage.textContent = message;
     popup.classList.remove('hidden', 'success', 'error');
@@ -11,8 +14,13 @@ function showPopup(message, type = 'success') {
     // Show popup
     popup.style.display = 'flex';
 
-    // Close on button click
+    // Close on "X" button click
     document.getElementById('popup-close')?.addEventListener('click', () => {
+        popup.style.display = 'none';
+    }, { once: true });
+
+    // Close on "OK" button click
+    popupOkButton.addEventListener('click', () => {
         popup.style.display = 'none';
     }, { once: true });
 
@@ -44,18 +52,21 @@ document.getElementById('upload-form')?.addEventListener('submit', function (e) 
 
     // Show spinner
     spinner.style.display = 'inline-block';
+    this.querySelector('button[type="submit"]').disabled = true;
 });
 
 // Filter form submission handling
 document.getElementById('filter-form')?.addEventListener('submit', function () {
     const spinner = document.getElementById('filter-spinner');
     spinner.style.display = 'inline-block';
+    this.querySelector('button[type="submit"]').disabled = true;
 });
 
 // Clear filters
 document.getElementById('clear-filters')?.addEventListener('click', function () {
     const form = document.getElementById('filter-form');
     form.querySelectorAll('select').forEach(select => select.value = '');
+    form.querySelector('input[type="date"]').value = ''; // Clear date input as well
     form.submit();
 });
 
@@ -64,6 +75,7 @@ document.querySelectorAll('.delete-form').forEach(form => {
     form.addEventListener('submit', function () {
         const spinner = this.querySelector('.delete-spinner');
         spinner.style.display = 'inline-block';
+        this.querySelector('button[type="submit"]').disabled = true;
     });
 });
 
@@ -76,6 +88,59 @@ if (urlParams.get('success')) {
     const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
     history.replaceState(null, '', newUrl);
 }
+
+// Configure PDF.js worker
+if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js';
+}
+
+// Handle preview button clicks
+document.querySelectorAll('.preview-btn').forEach(button => {
+    button.addEventListener('click', async function() {
+        const filePath = this.getAttribute('data-filepath');
+        console.log('Attempting to preview PDF at:', filePath); // Debug log
+        const modal = document.getElementById('previewModal');
+        const canvas = document.getElementById('pdfCanvas');
+        const context = canvas.getContext('2d');
+
+        // Show the modal
+        modal.classList.remove('hidden');
+
+        try {
+            // Load the PDF
+            const pdf = await pdfjsLib.getDocument(filePath).promise;
+            const page = await pdf.getPage(1); // Render the first page
+
+            // Set canvas dimensions with scaling
+            const scale = 1.5; // Increase scale for better readability
+            const viewport = page.getViewport({ scale: scale });
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            // Render the PDF page into the canvas
+            await page.render({
+                canvasContext: context,
+                viewport: viewport
+            }).promise;
+        } catch (error) {
+            console.error('Error loading PDF:', error);
+            showPopup('Failed to load PDF preview. Ensure the file exists and is accessible.', 'error');
+            modal.classList.add('hidden');
+        }
+    });
+});
+
+// Handle preview modal close
+document.querySelectorAll('.close-modal').forEach(button => {
+    button.addEventListener('click', function() {
+        const modal = document.getElementById('previewModal');
+        modal.classList.add('hidden');
+        // Clear the canvas
+        const canvas = document.getElementById('pdfCanvas');
+        const context = canvas.getContext('2d');
+        context.clearRect(0, 0, canvas.width, canvas.height);
+    });
+});
 
 // Dashboard chart initialization
 if (document.getElementById('typeChart')) {

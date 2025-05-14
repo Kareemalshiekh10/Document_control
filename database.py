@@ -2,7 +2,7 @@ import sqlite3
 import os
 from datetime import datetime
 
-DATABASE = 'documents.db'
+DATABASE = r'c:\Users\alshi\OneDrive\Desktop\Document_control\documents.db'
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
@@ -104,7 +104,7 @@ def insert_document(filename, file_path, document_type_id, project_id, site_id, 
 def get_all_documents(filters=None):
     conn = get_db_connection()
     query = '''
-        SELECT d.id, d.filename, dt.type_name, p.project_name, s.site_name, st.status_name, u.username, d.created_at
+        SELECT d.id, d.filename, d.file_path, dt.type_name, p.project_name, s.site_name, st.status_name, u.username, d.created_at
         FROM documents d
         JOIN document_types dt ON d.document_type_id = dt.id
         JOIN projects p ON d.project_id = p.id
@@ -153,8 +153,10 @@ def delete_document(document_id):
 
 def get_dashboard_stats():
     conn = get_db_connection()
+    total_docs = conn.execute('SELECT COUNT(*) FROM documents').fetchone()[0]
+    print(f"Total documents in database: {total_docs}")  # Debug log
     stats = {
-        'total_documents': conn.execute('SELECT COUNT(*) FROM documents').fetchone()[0],
+        'total_documents': total_docs,
         'documents_by_type': conn.execute('''
             SELECT dt.type_name, COUNT(d.id) as count
             FROM documents d

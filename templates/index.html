@@ -139,8 +139,9 @@
                         <td>{{ document.status_name }}</td>
                         <td>{{ document.username }}</td>
                         <td>{{ document.created_at }}</td>
-                        <td>
-                            <form class="delete-form" method="POST" action="{{ url_for('delete_file', document_id=document.id) }}" onsubmit="return confirm('Are you sure you want to delete {{ document.filename }}?');">
+                        <td class="flex items-center space-x-2">
+                            <button type="button" class="bg-green-600 text-white px-2 py-1 rounded-md hover:bg-green-700 preview-btn" data-filepath="{{ document.file_path }}">Preview</button>
+                            <form class="delete-form inline-flex" method="POST" action="{{ url_for('delete_file', document_id=document.id) }}" onsubmit="return confirm('Are you sure you want to delete {{ document.filename }}?');">
                                 <button type="submit" class="bg-red-600 text-white px-2 py-1 rounded-md hover:bg-red-700">Delete</button>
                                 <span class="delete-spinner loading-spinner"></span>
                             </form>
@@ -150,4 +151,18 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="popup hidden">
+        <div class="popup-content preview-modal-content">
+            <h3 class="text-lg font-semibold mb-4">Document Preview</h3>
+            <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
+            <div class="mt-4">
+                <button type="button" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-700 close-modal">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include PDF.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
 {% endblock %}
