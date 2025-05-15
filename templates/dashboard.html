@@ -3,16 +3,21 @@
 {% block content %}
     <h2 class="text-2xl font-semibold text-gray-800 mb-6">Dashboard</h2>
 
-    <!-- Stat Card -->
-    <div class="stat-card mb-6">
-        <h3 class="text-lg font-semibold text-gray-700">Total Documents</h3>
-        <p class="text-3xl font-bold text-blue-600">{{ stats.total_documents }}</p>
+    <!-- Stat Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <!-- Documents Stat Card -->
+        <div class="stat-card">
+            <h3 class="text-lg font-semibold text-gray-700">Total Documents</h3>
+            <p class="text-3xl font-bold text-blue-600">{{ doc_stats.total_documents }}</p>
+        </div>
+        <!-- Issues Stat Card -->
+        <div class="stat-card">
+            <h3 class="text-lg font-semibold text-gray-700">Total Issues</h3>
+            <p class="text-3xl font-bold text-red-600">{{ issue_stats.total_issues }}</p>
+        </div>
     </div>
 
-    <!-- Refresh Button -->
-    <div class="mb-6">
-        <button id="refresh-dashboard" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Refresh Dashboard</button>
-    </div>
+  
 
     <!-- Charts -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -39,29 +44,229 @@
                 <canvas id="statusChart"></canvas>
             </div>
         </div>
+
+        <!-- Issues by Status (Bar) -->
+        <div class="form-container">
+            <h3 class="text-lg font-semibold text-gray-700 mb-4">Issues by Status</h3>
+            <div class="chart-container">
+                <canvas id="issueStatusChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Issues by Project (Pie) -->
+        <div class="form-container">
+            <h3 class="text-lg font-semibold text-gray-700 mb-4">Issues by Project</h3>
+            <div class="chart-container">
+                <canvas id="issueProjectChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Issues by Deadline (Bar) - New Timeline Graph -->
+        <div class="form-container">
+            <h3 class="text-lg font-semibold text-gray-700 mb-4">Issues by Deadline</h3>
+            <div class="chart-container">
+                <canvas id="deadlineChart"></canvas>
+            </div>
+        </div>
     </div>
 
+    <!-- Deadlines Table -->
+    <div class="mt-10">
+        <h3 class="text-lg font-semibold text-gray-700 mb-4">Issue Deadlines</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Project</th>
+                        <th>Site</th>
+                        <th>Deadline</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for issue in issue_stats.issues_with_deadlines %}
+                        <tr>
+                            <td>{{ issue.title }}</td>
+                            <td>{{ issue.project_name }}</td>
+                            <td>{{ issue.site_name }}</td>
+                            <td>{{ issue.deadline }}</td>
+                            <td>
+                                {% if issue.status == 'Overdue' %}
+                                    <span class="text-red-600 font-semibold">Overdue</span>
+                                {% elif issue.status == 'Due Today' %}
+                                    <span class="text-yellow-600 font-semibold">Due Today</span>
+                                {% elif issue.status == 'Upcoming' %}
+                                    <span class="text-green-600 font-semibold">Upcoming</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center">No issues with deadlines</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Pass stats to global scope for scripts.js
+        // Pass stats to global scope
         window.dashboardStats = {
             documents_by_type: [
-                {% for item in stats.documents_by_type %}
+                {% for item in doc_stats.documents_by_type %}
                     { type_name: '{{ item.type_name | replace("'", "\\'") | replace('"', '\\"') }}', count: {{ item.count }} }
                     {% if not loop.last %},{% endif %}
                 {% endfor %}
             ],
             documents_by_project: [
-                {% for item in stats.documents_by_project %}
+                {% for item in doc_stats.documents_by_project %}
                     { project_name: '{{ item.project_name | replace("'", "\\'") | replace('"', '\\"') }}', count: {{ item.count }} }
                     {% if not loop.last %},{% endif %}
                 {% endfor %}
             ],
             documents_by_status: [
-                {% for item in stats.documents_by_status %}
+                {% for item in doc_stats.documents_by_status %}
                     { status_name: '{{ item.status_name | replace("'", "\\'") | replace('"', '\\"') }}', count: {{ item.count }} }
+                    {% if not loop.last %},{% endif %}
+                {% endfor %}
+            ],
+            issues_by_status: [
+                {% for item in issue_stats.issues_by_status %}
+                    { status_name: '{{ item.status_name | replace("'", "\\'") | replace('"', '\\"') }}', count: {{ item.count }} }
+                    {% if not loop.last %},{% endif %}
+                {% endfor %}
+            ],
+            issues_by_project: [
+                {% for item in issue_stats.issues_by_project %}
+                    { project_name: '{{ item.project_name | replace("'", "\\'") | replace('"', '\\"') }}', count: {{ item.count }} }
+                    {% if not loop.last %},{% endif %}
+                {% endfor %}
+            ],
+            deadlines_count: [
+                {% for item in issue_stats.deadlines_count %}
+                    { deadline: '{{ item.deadline | replace("'", "\\'") | replace('"', '\\"') }}', count: {{ item.count }} }
+                    {% if not loop.last %},{% endif %}
+                {% endfor %}
+            ],
+            issues_with_deadlines: [
+                {% for issue in issue_stats.issues_with_deadlines %}
+                    { title: '{{ issue.title | replace("'", "\\'") | replace('"', '\\"') }}', deadline: '{{ issue.deadline | replace("'", "\\'") | replace('"', '\\"') }}', status: '{{ issue.status | replace("'", "\\'") | replace('"', '\\"') }}' }
                     {% if not loop.last %},{% endif %}
                 {% endfor %}
             ]
         };
+
+        // Render Charts
+        const typeChart = new Chart(document.getElementById('typeChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: window.dashboardStats.documents_by_type.map(item => item.type_name),
+                datasets: [{
+                    label: 'Number of Documents',
+                    data: window.dashboardStats.documents_by_type.map(item => item.count),
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { display: true } }
+            }
+        });
+
+        const projectChart = new Chart(document.getElementById('projectChart').getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: window.dashboardStats.documents_by_project.map(item => item.project_name),
+                datasets: [{
+                    data: window.dashboardStats.documents_by_project.map(item => item.count),
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                }]
+            },
+            options: { plugins: { legend: { display: true } } }
+        });
+
+        const statusChart = new Chart(document.getElementById('statusChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: window.dashboardStats.documents_by_status.map(item => item.status_name),
+                datasets: [{
+                    data: window.dashboardStats.documents_by_status.map(item => item.count),
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
+                }]
+            },
+            options: { plugins: { legend: { display: true } } }
+        });
+
+        const issueStatusChart = new Chart(document.getElementById('issueStatusChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: window.dashboardStats.issues_by_status.map(item => item.status_name),
+                datasets: [{
+                    label: 'Number of Issues',
+                    data: window.dashboardStats.issues_by_status.map(item => item.count),
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { display: true } }
+            }
+        });
+
+        const issueProjectChart = new Chart(document.getElementById('issueProjectChart').getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: window.dashboardStats.issues_by_project.map(item => item.project_name),
+                datasets: [{
+                    data: window.dashboardStats.issues_by_project.map(item => item.count),
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                }]
+            },
+            options: { plugins: { legend: { display: true } } }
+        });
+
+        const deadlineChart = new Chart(document.getElementById('deadlineChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: window.dashboardStats.deadlines_count.map(item => item.deadline),
+                datasets: [{
+                    label: 'Number of Issues',
+                    data: window.dashboardStats.deadlines_count.map(item => item.count),
+                    backgroundColor: window.dashboardStats.deadlines_count.map(item => {
+                        const issues = window.dashboardStats.issues_with_deadlines.filter(i => i.deadline === item.deadline);
+                        return issues.length > 0 ? (issues[0].status === 'Overdue' ? 'rgba(255, 99, 132, 0.5)' : 
+                            issues[0].status === 'Due Today' ? 'rgba(255, 206, 86, 0.5)' : 'rgba(75, 192, 192, 0.5)') : 'rgba(75, 192, 192, 0.5)';
+                    }),
+                    borderColor: window.dashboardStats.deadlines_count.map(item => {
+                        const issues = window.dashboardStats.issues_with_deadlines.filter(i => i.deadline === item.deadline);
+                        return issues.length > 0 ? (issues[0].status === 'Overdue' ? 'rgba(255, 99, 132, 1)' : 
+                            issues[0].status === 'Due Today' ? 'rgba(255, 206, 86, 1)' : 'rgba(75, 192, 192, 1)') : 'rgba(75, 192, 192, 1)';
+                    }),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: { 
+                    y: { beginAtZero: true },
+                    x: { 
+                        ticks: { 
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                },
+                plugins: { legend: { display: false } },
+                indexAxis: 'x' // Ensure bars are vertical
+            }
+        });
+
+        
     </script>
 {% endblock %}

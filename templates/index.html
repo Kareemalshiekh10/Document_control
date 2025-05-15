@@ -141,7 +141,8 @@
                         <td>{{ document.created_at }}</td>
                         <td class="flex items-center space-x-2">
                             <button type="button" class="bg-green-600 text-white px-2 py-1 rounded-md hover:bg-green-700 preview-btn" data-filepath="{{ document.file_path }}">Preview</button>
-                            <form class="delete-form inline-flex" method="POST" action="{{ url_for('delete_file', document_id=document.id) }}" onsubmit="return confirm('Are you sure you want to delete {{ document.filename }}?');">
+                            <a href="{{ url_for('serve_uploaded_file', filename=document.filename) }}" class="bg-yellow-600 text-white px-2 py-1 rounded-md hover:bg-yellow-700 download-btn" download>Download</a>
+                            <form class="delete-form inline-flex" method="POST" action="{{ url_for('delete_file', document_id=document.id) }}">
                                 <button type="submit" class="bg-red-600 text-white px-2 py-1 rounded-md hover:bg-red-700">Delete</button>
                                 <span class="delete-spinner loading-spinner"></span>
                             </form>

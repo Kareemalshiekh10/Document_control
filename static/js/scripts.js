@@ -32,7 +32,7 @@ function showPopup(message, type = 'success') {
     }, { once: true });
 }
 
-// Upload form validation and submission handling
+// Upload form validation and submission handling (Documents page)
 document.getElementById('upload-form')?.addEventListener('submit', function (e) {
     const fileInput = document.getElementById('file');
     const file = fileInput.files[0];
@@ -55,14 +55,14 @@ document.getElementById('upload-form')?.addEventListener('submit', function (e) 
     this.querySelector('button[type="submit"]').disabled = true;
 });
 
-// Filter form submission handling
+// Filter form submission handling (Documents page)
 document.getElementById('filter-form')?.addEventListener('submit', function () {
     const spinner = document.getElementById('filter-spinner');
     spinner.style.display = 'inline-block';
     this.querySelector('button[type="submit"]').disabled = true;
 });
 
-// Clear filters
+// Clear filters (Documents page)
 document.getElementById('clear-filters')?.addEventListener('click', function () {
     const form = document.getElementById('filter-form');
     form.querySelectorAll('select').forEach(select => select.value = '');
@@ -70,7 +70,42 @@ document.getElementById('clear-filters')?.addEventListener('click', function () 
     form.submit();
 });
 
-// Delete form submission handling
+// Report issue form submission handling
+document.getElementById('report-issue-form')?.addEventListener('submit', function (e) {
+    const fileInput = document.getElementById('issue-file');
+    const file = fileInput?.files[0];
+    const spinner = document.getElementById('report-issue-spinner');
+
+    // Validate file if provided
+    if (file) {
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            e.preventDefault();
+            showPopup('Only PDF files are allowed.', 'error');
+            return;
+        }
+    }
+
+    // Show spinner
+    spinner.style.display = 'inline-block';
+    this.querySelector('button[type="submit"]').disabled = true;
+});
+
+// Filter form submission handling (Issues page)
+document.getElementById('filter-issues-form')?.addEventListener('submit', function () {
+    const spinner = document.getElementById('filter-issues-spinner');
+    spinner.style.display = 'inline-block';
+    this.querySelector('button[type="submit"]').disabled = true;
+});
+
+// Clear filters (Issues page)
+document.getElementById('clear-issue-filters')?.addEventListener('click', function () {
+    const form = document.getElementById('filter-issues-form');
+    form.querySelectorAll('select').forEach(select => select.value = '');
+    form.querySelector('input[type="date"]').value = ''; // Clear date input as well
+    form.submit();
+});
+
+// Delete form submission handling (Documents)
 document.querySelectorAll('.delete-form').forEach(form => {
     form.addEventListener('submit', function () {
         const spinner = this.querySelector('.delete-spinner');
@@ -79,12 +114,25 @@ document.querySelectorAll('.delete-form').forEach(form => {
     });
 });
 
-// Show success message if present (e.g., after upload/delete) and clear URL parameter
+// Delete form submission handling (Issues)
+document.querySelectorAll('.delete-issue-form').forEach(form => {
+    form.addEventListener('submit', function () {
+        const spinner = this.querySelector('.delete-issue-spinner');
+        spinner.style.display = 'inline-block';
+        this.querySelector('button[type="submit"]').disabled = true;
+    });
+});
+
+// Show success or error message if present and clear URL parameter
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('success')) {
     showPopup(urlParams.get('success'), 'success');
-    // Remove the 'success' parameter from the URL to prevent popup on refresh
     urlParams.delete('success');
+    const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    history.replaceState(null, '', newUrl);
+} else if (urlParams.get('error')) {
+    showPopup(urlParams.get('error'), 'error');
+    urlParams.delete('error');
     const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
     history.replaceState(null, '', newUrl);
 }
@@ -189,12 +237,9 @@ if (document.getElementById('typeChart')) {
             }]
         },
         options: {
-            plugins: { legend: { position: 'bottom' }, tooltip: { enabled: true } }
+            plugins: { legend: { position: "bottom" }, tooltip: { enabled: true } }
         }
     });
 
-    // Refresh Dashboard button
-    document.getElementById('refresh-dashboard')?.addEventListener('click', function () {
-        window.location.reload();
-    });
+
 }

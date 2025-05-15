@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Issue Tracking</h2>
+
+    <!-- Report Issue Form -->
+    <div class="form-container mb-6">
+        <form id="report-issue-form" method="POST" action="{{ url_for('report_issue') }}" enctype="multipart/form-data">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="issue-title" class="block mb-1">Issue Title</label>
+                    <input type="text" id="issue-title" name="title" class="w-full border p-2 rounded-md focus:outline-none focus:border-blue-500" required>
+                </div>
+                <div>
+                    <label for="issue-description" class="block mb-1">Description</label>
+                    <textarea id="issue-description" name="description" class="w-full border p-2 rounded-md focus:outline-none focus:border-blue-500" rows="3"></textarea>
+                </div>
+                <div>
+                    <label for="issue-project" class="block mb-1">Project</label>
+                    <select id="issue-project" name="project" required>
+                        <option value="">Select Project</option>
+                        {% for project in projects %}
+                            <option value="{{ project.id }}">{{ project.project_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="issue-site" class="block mb-1">Site</label>
+                    <select id="issue-site" name="site" required>
+                        <option value="">Select Site</option>
+                        {% for site in sites %}
+                            <option value="{{ site.id }}">{{ site.site_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="issue-status" class="block mb-1">Status</label>
+                    <select id="issue-status" name="status" required>
+                        <option value="">Select Status</option>
+                        {% for status in issue_statuses %}
+                            <option value="{{ status.id }}">{{ status.status_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="issue-reported-by" class="block mb-1">Reported By</label>
+                    <select id="issue-reported-by" name="reported_by" required>
+                        <option value="">Select User</option>
+                        {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="issue-deadline" class="block mb-1">Deadline (Optional)</label>
+                    <input type="date" id="issue-deadline" name="deadline" class="w-full border p-2 rounded-md focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="issue-files" class="block mb-1">Upload New Attachments (Optional, any file type)</label>
+                    <input type="file" id="issue-files" name="files" multiple class="w-full border p-2 rounded-md focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 mt-4 rounded-md hover:bg-blue-700">Report Issue</button>
+            <span id="report-issue-spinner" class="loading-spinner"></span>
+        </form>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="form-container mb-6">
+        <form id="filter-issues-form" method="POST" action="">
+            <input type="hidden" name="filter">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label for="filter_issue_project" class="block mb-1">Project</label>
+                    <select id="filter_issue_project" name="project">
+                        <option value="">All</option>
+                        {% for project in projects %}
+                            <option value="{{ project.project_name }}" {% if filters.project == project.project_name %}selected{% endif %}>{{ project.project_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="filter_issue_site" class="block mb-1">Site</label>
+                    <select id="filter_issue_site" name="site">
+                        <option value="">All</option>
+                        {% for site in sites %}
+                            <option value="{{ site.site_name }}" {% if filters.site == site.site_name %}selected{% endif %}>{{ site.site_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="filter_issue_status" class="block mb-1">Status</label>
+                    <select id="filter_issue_status" name="status">
+                        <option value="">All</option>
+                        {% for status in issue_statuses %}
+                            <option value="{{ status.status_name }}" {% if filters.status == status.status_name %}selected{% endif %}>{{ status.status_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="filter_issue_date" class="block mb-1">Date</label>
+                    <input type="date" id="filter_issue_date" name="date" value="{{ filters.date if filters.date else '' }}">
+                </div>
+            </div>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 mt-4 rounded-md hover:bg-blue-700">Apply Filter</button>
+            <button type="button" id="clear-issue-filters" class="bg-gray-500 text-white px-4 py-2 mt-4 rounded-md hover:bg-gray-700">Clear Filters</button>
+            <span id="filter-issues-spinner" class="loading-spinner"></span>
+        </form>
+    </div>
+
+    <!-- Issues Table -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Project</th>
+                    <th>Site</th>
+                    <th>Status</th>
+                    <th>Reported By</th>
+                    <th>Deadline</th>
+                    <th>Created At</th>
+                    <th>Related Attachments</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for issue in issues %}
+                    <tr>
+                        <td>{{ issue.title }}</td>
+                        <td>{{ issue.description or 'N/A' }}</td>
+                        <td>{{ issue.project_name }}</td>
+                        <td>{{ issue.site_name }}</td>
+                        <td>{{ issue.status_name }}</td>
+                        <td>{{ issue.username }}</td>
+                        <td>{{ issue.deadline or 'N/A' }}</td>
+                        <td>{{ issue.created_at }}</td>
+                        <td>
+                            {% set related_docs = get_documents_for_issue(issue.id) %}
+                            {% if related_docs %}
+                                <ul class="list-disc list-inside">
+                                    {% for doc in related_docs %}
+                                        <li>
+                                            <a href="{{ url_for('serve_uploaded_file', filename=doc.filename) }}" class="text-blue-600 hover:underline" target="_blank">{{ doc.filename }}</a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                None
+                            {% endif %}
+                        </td>
+                        <td class="flex items-center space-x-2">
+                            <form class="delete-issue-form inline-flex" method="POST" action="{{ url_for('delete_issue_route', issue_id=issue.id) }}">
+                                <button type="submit" class="bg-red-600 text-white px-2 py-1 rounded-md hover:bg-red-700">Delete</button>
+                                <span class="delete-issue-spinner loading-spinner"></span>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

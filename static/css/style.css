@@ -71,6 +71,8 @@ nav .navbar-logo:hover {
     color: #2d3748;
 }
 
+.form-container input[type="text"],
+.form-container textarea,
 .form-container input[type="file"],
 .form-container select,
 .form-container input[type="date"] {
@@ -79,8 +81,12 @@ nav .navbar-logo:hover {
     border-radius: 0.375rem;
     width: 100%;
     transition: border-color 0.2s;
+    color: #2d3748;
+    background-color: #ffffff;
 }
 
+.form-container input[type="text"]:focus,
+.form-container textarea:focus,
 .form-container input[type="file"]:focus,
 .form-container select:focus,
 .form-container input[type="date"]:focus {
@@ -131,6 +137,12 @@ nav .navbar-logo:hover {
 
 .table-container .preview-btn {
     margin-left: 0; /* Remove margin since we're using flex space-x-2 */
+}
+
+.table-container .download-btn {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+    text-decoration: none; /* Remove default link underline */
 }
 
 /* Loading spinner */
