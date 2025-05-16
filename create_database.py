@@ -1,15 +1,22 @@
-# create_database.py
+import psycopg2
+from psycopg2.extras import DictCursor
 
-import sqlite3
-
-# Connect to SQLite database with absolute path
-conn = sqlite3.connect(r'c:\Users\alshi\OneDrive\Desktop\Document_control\documents.db')
+# Connect to PostgreSQL
+conn = psycopg2.connect(
+    dbname="document_control",
+    user="doc_user",
+    password="asdfgh123!@#",
+    host="localhost",
+    port="5432",
+    cursor_factory=DictCursor
+)
 cursor = conn.cursor()
 
-# Drop the old tables if they exist
-cursor.execute('DROP TABLE IF EXISTS documents')
+# Drop old tables if they exist
 cursor.execute('DROP TABLE IF EXISTS issue_documents')
+cursor.execute('DROP TABLE IF EXISTS issue_attachments')
 cursor.execute('DROP TABLE IF EXISTS issues')
+cursor.execute('DROP TABLE IF EXISTS documents')
 cursor.execute('DROP TABLE IF EXISTS issue_statuses')
 cursor.execute('DROP TABLE IF EXISTS document_types')
 cursor.execute('DROP TABLE IF EXISTS projects')
@@ -19,48 +26,48 @@ cursor.execute('DROP TABLE IF EXISTS users')
 
 # Create document_types table
 cursor.execute('''
-    CREATE TABLE IF NOT EXISTS document_types (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE document_types (
+        id SERIAL PRIMARY KEY,
         type_name TEXT NOT NULL UNIQUE
     )
 ''')
 
 # Create projects table
 cursor.execute('''
-    CREATE TABLE IF NOT EXISTS projects (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE projects (
+        id SERIAL PRIMARY KEY,
         project_name TEXT NOT NULL UNIQUE
     )
 ''')
 
 # Create sites table
 cursor.execute('''
-    CREATE TABLE IF NOT EXISTS sites (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE sites (
+        id SERIAL PRIMARY KEY,
         site_name TEXT NOT NULL UNIQUE
     )
 ''')
 
 # Create statuses table
 cursor.execute('''
-    CREATE TABLE IF NOT EXISTS statuses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE statuses (
+        id SERIAL PRIMARY KEY,
         status_name TEXT NOT NULL UNIQUE
     )
 ''')
 
 # Create users table
 cursor.execute('''
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE users (
+        id SERIAL PRIMARY KEY,
         username TEXT NOT NULL UNIQUE
     )
 ''')
 
 # Create documents table with foreign keys
 cursor.execute('''
-    CREATE TABLE IF NOT EXISTS documents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE documents (
+        id SERIAL PRIMARY KEY,
         filename TEXT NOT NULL,
         file_path TEXT NOT NULL,
         document_type_id INTEGER,
@@ -79,16 +86,16 @@ cursor.execute('''
 
 # Create issue_statuses table
 cursor.execute('''
-    CREATE TABLE IF NOT EXISTS issue_statuses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE issue_statuses (
+        id SERIAL PRIMARY KEY,
         status_name TEXT NOT NULL UNIQUE
     )
 ''')
 
 # Create issues table with deadline
 cursor.execute('''
-    CREATE TABLE IF NOT EXISTS issues (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE issues (
+        id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
         project_id INTEGER,
@@ -106,7 +113,7 @@ cursor.execute('''
 
 # Create issue_documents junction table
 cursor.execute('''
-    CREATE TABLE IF NOT EXISTS issue_documents (
+    CREATE TABLE issue_documents (
         issue_id INTEGER,
         document_id INTEGER,
         FOREIGN KEY (issue_id) REFERENCES issues(id),
@@ -115,29 +122,43 @@ cursor.execute('''
     )
 ''')
 
+# Create issue_attachments table
+cursor.execute('''
+    CREATE TABLE issue_attachments (
+        id SERIAL PRIMARY KEY,
+        filename TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        issue_id INTEGER,
+        uploaded_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (issue_id) REFERENCES issues(id),
+        FOREIGN KEY (uploaded_by) REFERENCES users(id)
+    )
+''')
+
 # Insert sample data
 # Document Types
-cursor.executemany('INSERT OR IGNORE INTO document_types (type_name) VALUES (?)',
+cursor.executemany('INSERT INTO document_types (type_name) VALUES (%s) ON CONFLICT (type_name) DO NOTHING',
                    [('Blueprint',), ('Permit',), ('Contract',)])
 
 # Projects
-cursor.executemany('INSERT OR IGNORE INTO projects (project_name) VALUES (?)',
+cursor.executemany('INSERT INTO projects (project_name) VALUES (%s) ON CONFLICT (project_name) DO NOTHING',
                    [('Downtown Tower',), ('River Bridge',)])
 
 # Sites
-cursor.executemany('INSERT OR IGNORE INTO sites (site_name) VALUES (?)',
+cursor.executemany('INSERT INTO sites (site_name) VALUES (%s) ON CONFLICT (site_name) DO NOTHING',
                    [('Site A',), ('Site B',)])
 
 # Statuses (for documents)
-cursor.executemany('INSERT OR IGNORE INTO statuses (status_name) VALUES (?)',
+cursor.executemany('INSERT INTO statuses (status_name) VALUES (%s) ON CONFLICT (status_name) DO NOTHING',
                    [('Draft',), ('Approved',), ('Rejected',)])
 
 # Issue Statuses
-cursor.executemany('INSERT OR IGNORE INTO issue_statuses (status_name) VALUES (?)',
+cursor.executemany('INSERT INTO issue_statuses (status_name) VALUES (%s) ON CONFLICT (status_name) DO NOTHING',
                    [('Open',), ('In Progress',), ('Closed',)])
 
 # Users
-cursor.executemany('INSERT OR IGNORE INTO users (username) VALUES (?)',
+cursor.executemany('INSERT INTO users (username) VALUES (%s) ON CONFLICT (username) DO NOTHING',
                    [('john_doe',), ('jane_smith',)])
 
 # Commit changes

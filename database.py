@@ -1,51 +1,69 @@
-# database.py
-
-import sqlite3
+import psycopg2
+from psycopg2.extras import DictCursor
 import os
 from datetime import datetime
 
-DATABASE = r'c:\Users\alshi\OneDrive\Desktop\Document_control\documents.db'
+# PostgreSQL database configuration
+DATABASE = {
+    'dbname': 'document_control',
+    'user': 'doc_user',
+    'password': 'asdfgh123!@#',
+    'host': 'localhost',
+    'port': '5432'
+}
 
 def get_db_connection():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(**DATABASE, cursor_factory=DictCursor)
     return conn
 
 def init_db():
     conn = get_db_connection()
-    conn.execute('''
+    cursor = conn.cursor()
+
+    # Create document_types table
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS document_types (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             type_name TEXT NOT NULL UNIQUE
         )
     ''')
-    conn.execute('''
+
+    # Create projects table
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS projects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             project_name TEXT NOT NULL UNIQUE
         )
     ''')
-    conn.execute('''
+
+    # Create sites table
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS sites (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             site_name TEXT NOT NULL UNIQUE
         )
     ''')
-    conn.execute('''
+
+    # Create statuses table
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS statuses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             status_name TEXT NOT NULL UNIQUE
         )
     ''')
-    conn.execute('''
+
+    # Create users table
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE
         )
     ''')
-    conn.execute('''
+
+    # Create documents table with foreign keys
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS documents (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             filename TEXT NOT NULL,
             file_path TEXT NOT NULL,
             document_type_id INTEGER,
@@ -61,17 +79,19 @@ def init_db():
             FOREIGN KEY (uploaded_by) REFERENCES users(id)
         )
     ''')
-    # New table for issue statuses
-    conn.execute('''
+
+    # Create issue_statuses table
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS issue_statuses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             status_name TEXT NOT NULL UNIQUE
         )
     ''')
-    # Updated issues table with deadline
-    conn.execute('''
+
+    # Create issues table with deadline
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS issues (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             title TEXT NOT NULL,
             description TEXT,
             project_id INTEGER,
@@ -86,8 +106,9 @@ def init_db():
             FOREIGN KEY (reported_by) REFERENCES users(id)
         )
     ''')
-    # Junction table to link issues with documents (for Documents page)
-    conn.execute('''
+
+    # Create issue_documents junction table
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS issue_documents (
             issue_id INTEGER,
             document_id INTEGER,
@@ -96,10 +117,11 @@ def init_db():
             PRIMARY KEY (issue_id, document_id)
         )
     ''')
-    # New table for issue attachments (separate from documents)
-    conn.execute('''
+
+    # Create issue_attachments table
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS issue_attachments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             filename TEXT NOT NULL,
             file_path TEXT NOT NULL,
             issue_id INTEGER,
@@ -112,66 +134,74 @@ def init_db():
 
     # Insert default data if tables are empty
     # Check and insert document_types
-    doc_type_count = conn.execute('SELECT COUNT(*) FROM document_types').fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM document_types')
+    doc_type_count = cursor.fetchone()[0]
     if doc_type_count == 0:
-        conn.execute('INSERT INTO document_types (type_name) VALUES (?)', ('Type A',))
-        conn.execute('INSERT INTO document_types (type_name) VALUES (?)', ('Type B',))
+        cursor.execute('INSERT INTO document_types (type_name) VALUES (%s) ON CONFLICT (type_name) DO NOTHING', ('Type A',))
+        cursor.execute('INSERT INTO document_types (type_name) VALUES (%s) ON CONFLICT (type_name) DO NOTHING', ('Type B',))
 
     # Check and insert statuses (for documents)
-    status_count = conn.execute('SELECT COUNT(*) FROM statuses').fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM statuses')
+    status_count = cursor.fetchone()[0]
     if status_count == 0:
-        conn.execute('INSERT INTO statuses (status_name) VALUES (?)', ('Draft',))
-        conn.execute('INSERT INTO statuses (status_name) VALUES (?)', ('Final',))
+        cursor.execute('INSERT INTO statuses (status_name) VALUES (%s) ON CONFLICT (status_name) DO NOTHING', ('Draft',))
+        cursor.execute('INSERT INTO statuses (status_name) VALUES (%s) ON CONFLICT (status_name) DO NOTHING', ('Final',))
 
     # Check and insert projects
-    project_count = conn.execute('SELECT COUNT(*) FROM projects').fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM projects')
+    project_count = cursor.fetchone()[0]
     if project_count == 0:
-        conn.execute('INSERT INTO projects (project_name) VALUES (?)', ('Project A',))
-        conn.execute('INSERT INTO projects (project_name) VALUES (?)', ('Project B',))
+        cursor.execute('INSERT INTO projects (project_name) VALUES (%s) ON CONFLICT (project_name) DO NOTHING', ('Project A',))
+        cursor.execute('INSERT INTO projects (project_name) VALUES (%s) ON CONFLICT (project_name) DO NOTHING', ('Project B',))
 
     # Check and insert sites
-    site_count = conn.execute('SELECT COUNT(*) FROM sites').fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM sites')
+    site_count = cursor.fetchone()[0]
     if site_count == 0:
-        conn.execute('INSERT INTO sites (site_name) VALUES (?)', ('Site 1',))
-        conn.execute('INSERT INTO sites (site_name) VALUES (?)', ('Site 2',))
+        cursor.execute('INSERT INTO sites (site_name) VALUES (%s) ON CONFLICT (site_name) DO NOTHING', ('Site 1',))
+        cursor.execute('INSERT INTO sites (site_name) VALUES (%s) ON CONFLICT (site_name) DO NOTHING', ('Site 2',))
 
     # Check and insert issue statuses
-    issue_status_count = conn.execute('SELECT COUNT(*) FROM issue_statuses').fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM issue_statuses')
+    issue_status_count = cursor.fetchone()[0]
     if issue_status_count == 0:
-        conn.execute('INSERT INTO issue_statuses (status_name) VALUES (?)', ('Open',))
-        conn.execute('INSERT INTO issue_statuses (status_name) VALUES (?)', ('Closed',))
+        cursor.execute('INSERT INTO issue_statuses (status_name) VALUES (%s) ON CONFLICT (type_name) DO NOTHING', ('Open',))
+        cursor.execute('INSERT INTO issue_statuses (status_name) VALUES (%s) ON CONFLICT (type_name) DO NOTHING', ('Closed',))
 
     # Check and insert users
-    user_count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM users')
+    user_count = cursor.fetchone()[0]
     if user_count == 0:
-        conn.execute('INSERT INTO users (username) VALUES (?)', ('user1',))
+        cursor.execute('INSERT INTO users (username) VALUES (%s) ON CONFLICT (username) DO NOTHING', ('user1',))
 
     # Check and insert test documents
-    document_count = conn.execute('SELECT COUNT(*) FROM documents').fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM documents')
+    document_count = cursor.fetchone()[0]
     if document_count == 0:
-        conn.execute('''
+        cursor.execute('''
             INSERT INTO documents (filename, file_path, document_type_id, project_id, site_id, status_id, uploaded_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         ''', ('doc1.pdf', 'uploads/doc1.pdf', 1, 1, 1, 1, 1))
-        conn.execute('''
+        cursor.execute('''
             INSERT INTO documents (filename, file_path, document_type_id, project_id, site_id, status_id, uploaded_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         ''', ('doc2.pdf', 'uploads/doc2.pdf', 2, 2, 2, 2, 1))
 
     # Check and insert test issues with deadlines
-    issue_count = conn.execute('SELECT COUNT(*) FROM issues').fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM issues')
+    issue_count = cursor.fetchone()[0]
     if issue_count == 0:
-        conn.execute('''
+        cursor.execute('''
             INSERT INTO issues (title, description, project_id, site_id, status_id, reported_by, deadline)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         ''', ('Test Issue 1', 'Description 1', 1, 1, 1, 1, '2025-05-14'))
-        conn.execute('''
+        cursor.execute('''
             INSERT INTO issues (title, description, project_id, site_id, status_id, reported_by, deadline)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         ''', ('Test Issue 2', 'Description 2', 1, 1, 1, 1, '2025-05-15'))
-        conn.execute('''
+        cursor.execute('''
             INSERT INTO issues (title, description, project_id, site_id, status_id, reported_by, deadline)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         ''', ('Test Issue 3', 'Description 3', 2, 2, 2, 1, '2025-05-16'))
 
     conn.commit()
@@ -179,54 +209,68 @@ def init_db():
 
 def get_document_types():
     conn = get_db_connection()
-    document_types = conn.execute('SELECT * FROM document_types').fetchall()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM document_types')
+    document_types = cursor.fetchall()
     conn.close()
     return document_types
 
 def get_projects():
     conn = get_db_connection()
-    projects = conn.execute('SELECT * FROM projects').fetchall()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM projects')
+    projects = cursor.fetchall()
     conn.close()
     return projects
 
 def get_sites():
     conn = get_db_connection()
-    sites = conn.execute('SELECT * FROM sites').fetchall()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM sites')
+    sites = cursor.fetchall()
     conn.close()
     return sites
 
 def get_statuses():
     conn = get_db_connection()
-    statuses = conn.execute('SELECT * FROM statuses').fetchall()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM statuses')
+    statuses = cursor.fetchall()
     conn.close()
     return statuses
 
 def get_users():
     conn = get_db_connection()
-    users = conn.execute('SELECT * FROM users').fetchall()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users')
+    users = cursor.fetchall()
     conn.close()
     return users
 
 def get_issue_statuses():
     conn = get_db_connection()
-    statuses = conn.execute('SELECT * FROM issue_statuses').fetchall()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM issue_statuses')
+    statuses = cursor.fetchall()
     conn.close()
     return statuses
 
 def insert_document(filename, file_path, document_type_id, project_id, site_id, status_id, uploaded_by):
     conn = get_db_connection()
-    conn.execute('''
+    cursor = conn.cursor()
+    cursor.execute('''
         INSERT INTO documents (filename, file_path, document_type_id, project_id, site_id, status_id, uploaded_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
     ''', (filename, file_path, document_type_id, project_id, site_id, status_id, uploaded_by))
     conn.commit()
     conn.close()
 
 def insert_issue_attachment(filename, file_path, issue_id, uploaded_by):
     conn = get_db_connection()
-    conn.execute('''
+    cursor = conn.cursor()
+    cursor.execute('''
         INSERT INTO issue_attachments (filename, file_path, issue_id, uploaded_by)
-        VALUES (?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s)
     ''', (filename, file_path, issue_id, uploaded_by))
     conn.commit()
     conn.close()
@@ -236,15 +280,17 @@ def insert_issue(title, description, project_id, site_id, status_id, reported_by
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO issues (title, description, project_id, site_id, status_id, reported_by, deadline)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
     ''', (title, description, project_id, site_id, status_id, reported_by, deadline))
-    issue_id = cursor.lastrowid
+    issue_id = cursor.fetchone()['id']
     conn.commit()
     conn.close()
     return issue_id
 
 def get_all_documents(filters=None):
     conn = get_db_connection()
+    cursor = conn.cursor()
     query = '''
         SELECT d.id, d.filename, d.file_path, dt.type_name, p.project_name, s.site_name, st.status_name, u.username, d.created_at
         FROM documents d
@@ -259,31 +305,33 @@ def get_all_documents(filters=None):
 
     if filters:
         if filters.get('document_type'):
-            conditions.append('dt.type_name = ?')
+            conditions.append('dt.type_name = %s')
             params.append(filters['document_type'])
         if filters.get('project'):
-            conditions.append('p.project_name = ?')
+            conditions.append('p.project_name = %s')
             params.append(filters['project'])
         if filters.get('site'):
-            conditions.append('s.site_name = ?')
+            conditions.append('s.site_name = %s')
             params.append(filters['site'])
         if filters.get('status'):
-            conditions.append('st.status_name = ?')
+            conditions.append('st.status_name = %s')
             params.append(filters['status'])
         if filters.get('date'):
-            conditions.append('DATE(d.created_at) = ?')
+            conditions.append('DATE(d.created_at) = %s')
             params.append(filters['date'])
 
     if conditions:
         query += ' WHERE ' + ' AND '.join(conditions)
 
     query += ' ORDER BY d.created_at DESC'
-    documents = conn.execute(query, params).fetchall()
+    cursor.execute(query, params)
+    documents = cursor.fetchall()
     conn.close()
     return documents
 
 def get_all_issues(filters=None):
     conn = get_db_connection()
+    cursor = conn.cursor()
     query = '''
         SELECT i.id, i.title, i.description, p.project_name, s.site_name, st.status_name, u.username, i.deadline, i.created_at
         FROM issues i
@@ -297,42 +345,47 @@ def get_all_issues(filters=None):
 
     if filters:
         if filters.get('project'):
-            conditions.append('p.project_name = ?')
+            conditions.append('p.project_name = %s')
             params.append(filters['project'])
         if filters.get('site'):
-            conditions.append('s.site_name = ?')
+            conditions.append('s.site_name = %s')
             params.append(filters['site'])
         if filters.get('status'):
-            conditions.append('st.status_name = ?')
+            conditions.append('st.status_name = %s')
             params.append(filters['status'])
         if filters.get('date'):
-            conditions.append('DATE(i.created_at) = ?')
+            conditions.append('DATE(i.created_at) = %s')
             params.append(filters['date'])
 
     if conditions:
         query += ' WHERE ' + ' AND '.join(conditions)
 
     query += ' ORDER BY i.created_at DESC'
-    issues = conn.execute(query, params).fetchall()
+    cursor.execute(query, params)
+    issues = cursor.fetchall()
     conn.close()
     return issues
 
 def get_documents_for_issue(issue_id):
     conn = get_db_connection()
-    documents = conn.execute('''
+    cursor = conn.cursor()
+    cursor.execute('''
         SELECT ia.id, ia.filename
         FROM issue_attachments ia
-        WHERE ia.issue_id = ?
-    ''', (issue_id,)).fetchall()
+        WHERE ia.issue_id = %s
+    ''', (issue_id,))
+    documents = cursor.fetchall()
     conn.close()
     return documents
 
 def delete_document(document_id):
     conn = get_db_connection()
-    document = conn.execute('SELECT file_path FROM documents WHERE id = ?', (document_id,)).fetchone()
+    cursor = conn.cursor()
+    cursor.execute('SELECT file_path FROM documents WHERE id = %s', (document_id,))
+    document = cursor.fetchone()
     if document:
-        conn.execute('DELETE FROM documents WHERE id = ?', (document_id,))
-        conn.execute('DELETE FROM issue_documents WHERE document_id = ?', (document_id,))  # Clean up links
+        cursor.execute('DELETE FROM documents WHERE id = %s', (document_id,))
+        cursor.execute('DELETE FROM issue_documents WHERE document_id = %s', (document_id,))
         conn.commit()
         conn.close()
         return document['file_path']
@@ -341,9 +394,11 @@ def delete_document(document_id):
 
 def delete_issue_attachment(attachment_id):
     conn = get_db_connection()
-    attachment = conn.execute('SELECT file_path FROM issue_attachments WHERE id = ?', (attachment_id,)).fetchone()
+    cursor = conn.cursor()
+    cursor.execute('SELECT file_path FROM issue_attachments WHERE id = %s', (attachment_id,))
+    attachment = cursor.fetchone()
     if attachment:
-        conn.execute('DELETE FROM issue_attachments WHERE id = ?', (attachment_id,))
+        cursor.execute('DELETE FROM issue_attachments WHERE id = %s', (attachment_id,))
         conn.commit()
         conn.close()
         return attachment['file_path']
@@ -352,37 +407,43 @@ def delete_issue_attachment(attachment_id):
 
 def delete_issue(issue_id):
     conn = get_db_connection()
-    conn.execute('DELETE FROM issues WHERE id = ?', (issue_id,))
-    conn.execute('DELETE FROM issue_documents WHERE issue_id = ?', (issue_id,))  # Clean up links
-    conn.execute('DELETE FROM issue_attachments WHERE issue_id = ?', (issue_id,))  # Clean up attachments
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM issues WHERE id = %s', (issue_id,))
+    cursor.execute('DELETE FROM issue_documents WHERE issue_id = %s', (issue_id,))
+    cursor.execute('DELETE FROM issue_attachments WHERE issue_id = %s', (issue_id,))
     conn.commit()
     conn.close()
 
 def get_dashboard_stats():
     conn = get_db_connection()
-    total_docs = conn.execute('SELECT COUNT(*) FROM documents').fetchone()[0]
-    print(f"Total documents in database: {total_docs}")  # Debug log
-    documents_by_type = conn.execute('''
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM documents')
+    total_docs = cursor.fetchone()[0]
+    print(f"Total documents in database: {total_docs}")
+    cursor.execute('''
         SELECT dt.type_name, COUNT(d.id) as count
         FROM documents d
         JOIN document_types dt ON d.document_type_id = dt.id
         GROUP BY dt.id, dt.type_name
-    ''').fetchall()
-    print(f"Documents by type: {[dict(row) for row in documents_by_type]}")  # Debug log
-    documents_by_project = conn.execute('''
+    ''')
+    documents_by_type = [{'type_name': row['type_name'], 'count': row['count']} for row in cursor.fetchall()]
+    print(f"Documents by type: {documents_by_type}")
+    cursor.execute('''
         SELECT p.project_name, COUNT(d.id) as count
         FROM documents d
         JOIN projects p ON d.project_id = p.id
         GROUP BY p.id, p.project_name
-    ''').fetchall()
-    print(f"Documents by project: {[dict(row) for row in documents_by_project]}")  # Debug log
-    documents_by_status = conn.execute('''
+    ''')
+    documents_by_project = [{'project_name': row['project_name'], 'count': row['count']} for row in cursor.fetchall()]
+    print(f"Documents by project: {documents_by_project}")
+    cursor.execute('''
         SELECT st.status_name, COUNT(d.id) as count
         FROM documents d
         JOIN statuses st ON d.status_id = st.id
         GROUP BY st.id, st.status_name
-    ''').fetchall()
-    print(f"Documents by status: {[dict(row) for row in documents_by_status]}")  # Debug log
+    ''')
+    documents_by_status = [{'status_name': row['status_name'], 'count': row['count']} for row in cursor.fetchall()]
+    print(f"Documents by status: {documents_by_status}")
     stats = {
         'total_documents': total_docs,
         'documents_by_type': documents_by_type,
@@ -394,53 +455,58 @@ def get_dashboard_stats():
 
 def get_issue_stats():
     conn = get_db_connection()
-    total_issues = conn.execute('SELECT COUNT(*) FROM issues').fetchone()[0]
-    print(f"Total issues in database: {total_issues}")  # Debug log
-    current_date = datetime(2025, 5, 15, 21, 30)  # 09:30 PM +03, May 15, 2025
-    issues_with_deadlines = conn.execute('''
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM issues')
+    total_issues = cursor.fetchone()[0]
+    print(f"Total issues in database: {total_issues}")
+    current_date = datetime.now()  # Use current date instead of hardcoded
+    cursor.execute('''
         SELECT i.title, p.project_name, s.site_name, i.deadline
         FROM issues i
         JOIN projects p ON i.project_id = p.id
         JOIN sites s ON i.site_id = s.id
         WHERE i.deadline IS NOT NULL
         ORDER BY i.deadline ASC
-    ''').fetchall()
-    print("Issues with deadlines:", [dict(issue) for issue in issues_with_deadlines])  # Debug log
-    # Add status to each issue by converting sqlite3.Row to dict
+    ''')
+    issues_with_deadlines = cursor.fetchall()
+    print("Issues with deadlines:", [dict(issue) for issue in issues_with_deadlines])
     issues_with_deadlines_list = []
     for issue in issues_with_deadlines:
         issue_dict = dict(issue)
         if issue_dict['deadline']:
-            deadline_date = datetime.strptime(issue_dict['deadline'], '%Y-%m-%d')
-            if deadline_date.date() < current_date.date():
+            deadline_date = issue_dict['deadline']  # Already a datetime.date object
+            if deadline_date < current_date.date():
                 issue_dict['status'] = 'Overdue'
-            elif deadline_date.date() == current_date.date():
+            elif deadline_date == current_date.date():
                 issue_dict['status'] = 'Due Today'
             else:
                 issue_dict['status'] = 'Upcoming'
         issues_with_deadlines_list.append(issue_dict)
-    issues_by_status = conn.execute('''
+    cursor.execute('''
         SELECT st.status_name, COUNT(i.id) as count
         FROM issues i
         JOIN issue_statuses st ON i.status_id = st.id
         GROUP BY st.id, st.status_name
-    ''').fetchall()
-    print(f"Issues by status: {[dict(row) for row in issues_by_status]}")  # Debug log
-    issues_by_project = conn.execute('''
+    ''')
+    issues_by_status = [{'status_name': row['status_name'], 'count': row['count']} for row in cursor.fetchall()]
+    print(f"Issues by status: {issues_by_status}")
+    cursor.execute('''
         SELECT p.project_name, COUNT(i.id) as count
         FROM issues i
         JOIN projects p ON i.project_id = p.id
         GROUP BY p.id, p.project_name
-    ''').fetchall()
-    print(f"Issues by project: {[dict(row) for row in issues_by_project]}")  # Debug log
-    deadlines_count = conn.execute('''
+    ''')
+    issues_by_project = [{'project_name': row['project_name'], 'count': row['count']} for row in cursor.fetchall()]
+    print(f"Issues by project: {issues_by_project}")
+    cursor.execute('''
         SELECT deadline, COUNT(*) as count
         FROM issues
         WHERE deadline IS NOT NULL
         GROUP BY deadline
         ORDER BY deadline ASC
-    ''').fetchall()
-    print(f"Deadlines count: {[dict(row) for row in deadlines_count]}")  # Debug log
+    ''')
+    deadlines_count = [{'deadline': str(row['deadline']), 'count': row['count']} for row in cursor.fetchall()]
+    print(f"Deadlines count: {deadlines_count}")
     stats = {
         'total_issues': total_issues,
         'issues_by_status': issues_by_status,
