@@ -1,3 +1,5 @@
+<!-- dashboard.html -->
+
 {% extends 'base.html' %}
 
 {% block content %}
@@ -17,7 +19,10 @@
         </div>
     </div>
 
-  
+    <!-- Refresh Button -->
+    <div class="mb-6 text-center">
+        <button id="refresh-dashboard" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Refresh Dashboard</button>
+    </div>
 
     <!-- Charts -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -61,11 +66,11 @@
             </div>
         </div>
 
-        <!-- Issues by Deadline (Bar) - New Timeline Graph -->
+        <!-- Issues Deadline Timeline (Issue Name on X-axis, Date on Y-axis) -->
         <div class="form-container">
-            <h3 class="text-lg font-semibold text-gray-700 mb-4">Issues by Deadline</h3>
+            <h3 class="text-lg font-semibold text-gray-700 mb-4">Issues Deadline Timeline</h3>
             <div class="chart-container">
-                <canvas id="deadlineChart"></canvas>
+                <canvas id="deadlineTimeline"></canvas>
             </div>
         </div>
     </div>
@@ -111,8 +116,34 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Load Chart.js and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/dist/date-fns.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <script>
+        // Check if Chart.js loaded
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js failed to load. Please check your network connection or CDN availability.');
+        } else {
+            console.log('Chart.js loaded successfully:', Chart.version);
+        }
+
+        // Check if date-fns loaded
+        if (typeof dateFns === 'undefined') {
+            console.error('date-fns failed to load. Please check your network connection or CDN availability.');
+        } else {
+            console.log('date-fns loaded successfully');
+        }
+
+        // Register the annotation plugin after loading it
+        if (typeof chartjsPluginAnnotation !== 'undefined') {
+            Chart.register(chartjsPluginAnnotation);
+            console.log('chartjs-plugin-annotation registered successfully');
+        } else {
+            console.error('chartjs-plugin-annotation failed to load. "Today" line will not display.');
+        }
+
         // Pass stats to global scope
         window.dashboardStats = {
             documents_by_type: [
@@ -153,120 +184,250 @@
             ],
             issues_with_deadlines: [
                 {% for issue in issue_stats.issues_with_deadlines %}
-                    { title: '{{ issue.title | replace("'", "\\'") | replace('"', '\\"') }}', deadline: '{{ issue.deadline | replace("'", "\\'") | replace('"', '\\"') }}', status: '{{ issue.status | replace("'", "\\'") | replace('"', '\\"') }}' }
+                    { 
+                        title: '{{ issue.title | replace("'", "\\'") | replace('"', '\\"') }}', 
+                        deadline: '{{ issue.deadline }}', 
+                        status: '{{ issue.status }}',
+                        project_name: '{{ issue.project_name | replace("'", "\\'") | replace('"', '\\"') }}',
+                        site_name: '{{ issue.site_name | replace("'", "\\'") | replace('"', '\\"') }}'
+                    }
                     {% if not loop.last %},{% endif %}
                 {% endfor %}
             ]
         };
 
-        // Render Charts
-        const typeChart = new Chart(document.getElementById('typeChart').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: window.dashboardStats.documents_by_type.map(item => item.type_name),
-                datasets: [{
-                    label: 'Number of Documents',
-                    data: window.dashboardStats.documents_by_type.map(item => item.count),
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: { y: { beginAtZero: true } },
-                plugins: { legend: { display: true } }
-            }
-        });
+        console.log('Dashboard Stats:', window.dashboardStats);
 
-        const projectChart = new Chart(document.getElementById('projectChart').getContext('2d'), {
-            type: 'pie',
-            data: {
-                labels: window.dashboardStats.documents_by_project.map(item => item.project_name),
-                datasets: [{
-                    data: window.dashboardStats.documents_by_project.map(item => item.count),
-                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
-                }]
-            },
-            options: { plugins: { legend: { display: true } } }
-        });
+        // Check for empty data and handle gracefully
+        if (!window.dashboardStats.documents_by_type.length) {
+            console.warn('No data for Documents by Type chart');
+            document.getElementById('typeChart').parentElement.innerHTML += '<p class="text-center text-gray-500">No data available</p>';
+        }
+        if (!window.dashboardStats.documents_by_project.length) {
+            console.warn('No data for Documents by Project chart');
+            document.getElementById('projectChart').parentElement.innerHTML += '<p class="text-center text-gray-500">No data available</p>';
+        }
+        if (!window.dashboardStats.documents_by_status.length) {
+            console.warn('No data for Documents by Status chart');
+            document.getElementById('statusChart').parentElement.innerHTML += '<p class="text-center text-gray-500">No data available</p>';
+        }
+        if (!window.dashboardStats.issues_by_status.length) {
+            console.warn('No data for Issues by Status chart');
+            document.getElementById('issueStatusChart').parentElement.innerHTML += '<p class="text-center text-gray-500">No data available</p>';
+        }
+        if (!window.dashboardStats.issues_by_project.length) {
+            console.warn('No data for Issues by Project chart');
+            document.getElementById('issueProjectChart').parentElement.innerHTML += '<p class="text-center text-gray-500">No data available</p>';
+        }
+        if (!window.dashboardStats.issues_with_deadlines.length) {
+            console.warn('No data for Issues Deadline Timeline chart');
+            document.getElementById('deadlineTimeline').parentElement.innerHTML += '<p class="text-center text-gray-500">No data available</p>';
+        }
 
-        const statusChart = new Chart(document.getElementById('statusChart').getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: window.dashboardStats.documents_by_status.map(item => item.status_name),
-                datasets: [{
-                    data: window.dashboardStats.documents_by_status.map(item => item.count),
-                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
-                }]
-            },
-            options: { plugins: { legend: { display: true } } }
-        });
+        // Only proceed with chart rendering if Chart.js is loaded
+        if (typeof Chart !== 'undefined') {
+            try {
+                // Sort issues_with_deadlines by deadline (earliest first)
+                window.dashboardStats.issues_with_deadlines.sort((a, b) => {
+                    return new Date(a.deadline) - new Date(b.deadline);
+                });
 
-        const issueStatusChart = new Chart(document.getElementById('issueStatusChart').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: window.dashboardStats.issues_by_status.map(item => item.status_name),
-                datasets: [{
-                    label: 'Number of Issues',
-                    data: window.dashboardStats.issues_by_status.map(item => item.count),
-                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: { y: { beginAtZero: true } },
-                plugins: { legend: { display: true } }
-            }
-        });
+                // Calculate dynamic date range
+                const today = new Date('2025-05-15T23:57:00+03:00'); // Current date and time
+                const oneMonthLater = new Date(today);
+                oneMonthLater.setMonth(today.getMonth() + 1);
 
-        const issueProjectChart = new Chart(document.getElementById('issueProjectChart').getContext('2d'), {
-            type: 'pie',
-            data: {
-                labels: window.dashboardStats.issues_by_project.map(item => item.project_name),
-                datasets: [{
-                    data: window.dashboardStats.issues_by_project.map(item => item.count),
-                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
-                }]
-            },
-            options: { plugins: { legend: { display: true } } }
-        });
-
-        const deadlineChart = new Chart(document.getElementById('deadlineChart').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: window.dashboardStats.deadlines_count.map(item => item.deadline),
-                datasets: [{
-                    label: 'Number of Issues',
-                    data: window.dashboardStats.deadlines_count.map(item => item.count),
-                    backgroundColor: window.dashboardStats.deadlines_count.map(item => {
-                        const issues = window.dashboardStats.issues_with_deadlines.filter(i => i.deadline === item.deadline);
-                        return issues.length > 0 ? (issues[0].status === 'Overdue' ? 'rgba(255, 99, 132, 0.5)' : 
-                            issues[0].status === 'Due Today' ? 'rgba(255, 206, 86, 0.5)' : 'rgba(75, 192, 192, 0.5)') : 'rgba(75, 192, 192, 0.5)';
-                    }),
-                    borderColor: window.dashboardStats.deadlines_count.map(item => {
-                        const issues = window.dashboardStats.issues_with_deadlines.filter(i => i.deadline === item.deadline);
-                        return issues.length > 0 ? (issues[0].status === 'Overdue' ? 'rgba(255, 99, 132, 1)' : 
-                            issues[0].status === 'Due Today' ? 'rgba(255, 206, 86, 1)' : 'rgba(75, 192, 192, 1)') : 'rgba(75, 192, 192, 1)';
-                    }),
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: { 
-                    y: { beginAtZero: true },
-                    x: { 
-                        ticks: { 
-                            maxRotation: 45,
-                            minRotation: 45
+                // Render Charts
+                if (window.dashboardStats.documents_by_type.length) {
+                    const typeChart = new Chart(document.getElementById('typeChart').getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: window.dashboardStats.documents_by_type.map(item => item.type_name),
+                            datasets: [{
+                                label: 'Number of Documents',
+                                data: window.dashboardStats.documents_by_type.map(item => item.count),
+                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            scales: { y: { beginAtZero: true } },
+                            plugins: { legend: { display: true } }
                         }
-                    }
-                },
-                plugins: { legend: { display: false } },
-                indexAxis: 'x' // Ensure bars are vertical
-            }
-        });
+                    });
+                }
 
-        
+                if (window.dashboardStats.documents_by_project.length) {
+                    const projectChart = new Chart(document.getElementById('projectChart').getContext('2d'), {
+                        type: 'pie',
+                        data: {
+                            labels: window.dashboardStats.documents_by_project.map(item => item.project_name),
+                            datasets: [{
+                                data: window.dashboardStats.documents_by_project.map(item => item.count),
+                                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                            }]
+                        },
+                        options: { plugins: { legend: { display: true } } }
+                    });
+                }
+
+                if (window.dashboardStats.documents_by_status.length) {
+                    const statusChart = new Chart(document.getElementById('statusChart').getContext('2d'), {
+                        type: 'doughnut',
+                        data: {
+                            labels: window.dashboardStats.documents_by_status.map(item => item.status_name),
+                            datasets: [{
+                                data: window.dashboardStats.documents_by_status.map(item => item.count),
+                                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
+                            }]
+                        },
+                        options: { plugins: { legend: { display: true } } }
+                    });
+                }
+
+                if (window.dashboardStats.issues_by_status.length) {
+                    const issueStatusChart = new Chart(document.getElementById('issueStatusChart').getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: window.dashboardStats.issues_by_status.map(item => item.status_name),
+                            datasets: [{
+                                label: 'Number of Issues',
+                                data: window.dashboardStats.issues_by_status.map(item => item.count),
+                                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            scales: { y: { beginAtZero: true } },
+                            plugins: { legend: { display: true } }
+                        }
+                    });
+                }
+
+                if (window.dashboardStats.issues_by_project.length) {
+                    const issueProjectChart = new Chart(document.getElementById('issueProjectChart').getContext('2d'), {
+                        type: 'pie',
+                        data: {
+                            labels: window.dashboardStats.issues_by_project.map(item => item.project_name),
+                            datasets: [{
+                                data: window.dashboardStats.issues_by_project.map(item => item.count),
+                                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                            }]
+                        },
+                        options: { plugins: { legend: { display: true } } }
+                    });
+                }
+
+                if (window.dashboardStats.issues_with_deadlines.length) {
+                    const deadlineTimeline = new Chart(document.getElementById('deadlineTimeline').getContext('2d'), {
+                        type: 'scatter',
+                        data: {
+                            labels: window.dashboardStats.issues_with_deadlines.map(issue => issue.title),
+                            datasets: [{
+                                label: 'Issue Deadlines',
+                                data: window.dashboardStats.issues_with_deadlines.map((issue, index) => {
+                                    const deadlineDate = new Date(issue.deadline);
+                                    console.log(`Issue: ${issue.title}, Deadline: ${issue.deadline}, Parsed Date: ${deadlineDate.toISOString()}`);
+                                    return {
+                                        x: index,
+                                        y: deadlineDate,
+                                        title: issue.title,
+                                        status: issue.status,
+                                        project_name: issue.project_name,
+                                        site_name: issue.site_name
+                                    };
+                                }),
+                                backgroundColor: window.dashboardStats.issues_with_deadlines.map(issue => 
+                                    issue.status === 'Overdue' ? '#FF6384' :
+                                    issue.status === 'Due Today' ? '#FFCE56' :
+                                    '#36A2EB'
+                                ),
+                                pointBackgroundColor: window.dashboardStats.issues_with_deadlines.map(issue => 
+                                    issue.status === 'Overdue' ? '#FF6384' :
+                                    issue.status === 'Due Today' ? '#FFCE56' :
+                                    '#36A2EB'
+                                ),
+                                pointBorderColor: '#000000',
+                                pointRadius: 6,
+                                pointHoverRadius: 8,
+                                showLine: false
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                x: {
+                                    type: 'category',
+                                    labels: window.dashboardStats.issues_with_deadlines.map(issue => issue.title),
+                                    title: { display: true, text: 'Issue Title' },
+                                    ticks: {
+                                        autoSkip: false,
+                                        maxRotation: 45,
+                                        minRotation: 45
+                                    }
+                                },
+                                y: {
+                                    type: 'time',
+                                    time: {
+                                        unit: 'day',
+                                        displayFormats: { day: 'yyyy-MM-dd' },
+                                        tooltipFormat: 'yyyy-MM-dd'
+                                    },
+                                    min: today, // Dynamic start from today
+                                    max: oneMonthLater, // Dynamic end after one month
+                                    title: { display: true, text: 'Deadline Date' },
+                                    reverse: true // Earliest date at top
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const data = context.raw;
+                                            return `${data.title} (Project: ${data.project_name}, Site: ${data.site_name}) - ${data.status} (${data.y.toLocaleDateString()})`;
+                                        }
+                                    }
+                                },
+                                annotation: {
+                                    annotations: {
+                                        todayLine: {
+                                            type: 'line',
+                                            yMin: today,
+                                            yMax: today,
+                                            borderColor: '#888888',
+                                            borderWidth: 2,
+                                            borderDash: [5, 5],
+                                            label: {
+                                                content: 'Today',
+                                                display: true,
+                                                position: 'end',
+                                                backgroundColor: '#888888',
+                                                color: '#FFFFFF'
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error rendering charts:', error);
+            }
+        }
+
+        // Refresh Dashboard
+        document.getElementById('refresh-dashboard').addEventListener('click', () => {
+            fetch('/dashboard')
+                .then(response => response.text())
+                .then(html => {
+                    document.querySelector('body').innerHTML = html;
+                })
+                .catch(error => console.error('Error refreshing dashboard:', error));
+        });
     </script>
 {% endblock %}

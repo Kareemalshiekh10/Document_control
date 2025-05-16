@@ -1,3 +1,5 @@
+# create_database.py
+
 import sqlite3
 
 # Connect to SQLite database with absolute path

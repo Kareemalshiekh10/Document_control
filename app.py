@@ -1,3 +1,5 @@
+# app.py
+
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, make_response
 import os
 from database import get_document_types, get_projects, get_sites, get_statuses, get_users, insert_document, get_all_documents, delete_document, get_dashboard_stats, init_db, get_issue_statuses, insert_issue, get_all_issues, delete_issue, get_documents_for_issue, get_db_connection, insert_issue_attachment, delete_issue_attachment, get_issue_stats

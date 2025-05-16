@@ -1,3 +1,5 @@
+# database.py
+
 import sqlite3
 import os
 from datetime import datetime
@@ -107,6 +109,71 @@ def init_db():
             FOREIGN KEY (uploaded_by) REFERENCES users(id)
         )
     ''')
+
+    # Insert default data if tables are empty
+    # Check and insert document_types
+    doc_type_count = conn.execute('SELECT COUNT(*) FROM document_types').fetchone()[0]
+    if doc_type_count == 0:
+        conn.execute('INSERT INTO document_types (type_name) VALUES (?)', ('Type A',))
+        conn.execute('INSERT INTO document_types (type_name) VALUES (?)', ('Type B',))
+
+    # Check and insert statuses (for documents)
+    status_count = conn.execute('SELECT COUNT(*) FROM statuses').fetchone()[0]
+    if status_count == 0:
+        conn.execute('INSERT INTO statuses (status_name) VALUES (?)', ('Draft',))
+        conn.execute('INSERT INTO statuses (status_name) VALUES (?)', ('Final',))
+
+    # Check and insert projects
+    project_count = conn.execute('SELECT COUNT(*) FROM projects').fetchone()[0]
+    if project_count == 0:
+        conn.execute('INSERT INTO projects (project_name) VALUES (?)', ('Project A',))
+        conn.execute('INSERT INTO projects (project_name) VALUES (?)', ('Project B',))
+
+    # Check and insert sites
+    site_count = conn.execute('SELECT COUNT(*) FROM sites').fetchone()[0]
+    if site_count == 0:
+        conn.execute('INSERT INTO sites (site_name) VALUES (?)', ('Site 1',))
+        conn.execute('INSERT INTO sites (site_name) VALUES (?)', ('Site 2',))
+
+    # Check and insert issue statuses
+    issue_status_count = conn.execute('SELECT COUNT(*) FROM issue_statuses').fetchone()[0]
+    if issue_status_count == 0:
+        conn.execute('INSERT INTO issue_statuses (status_name) VALUES (?)', ('Open',))
+        conn.execute('INSERT INTO issue_statuses (status_name) VALUES (?)', ('Closed',))
+
+    # Check and insert users
+    user_count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+    if user_count == 0:
+        conn.execute('INSERT INTO users (username) VALUES (?)', ('user1',))
+
+    # Check and insert test documents
+    document_count = conn.execute('SELECT COUNT(*) FROM documents').fetchone()[0]
+    if document_count == 0:
+        conn.execute('''
+            INSERT INTO documents (filename, file_path, document_type_id, project_id, site_id, status_id, uploaded_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', ('doc1.pdf', 'uploads/doc1.pdf', 1, 1, 1, 1, 1))
+        conn.execute('''
+            INSERT INTO documents (filename, file_path, document_type_id, project_id, site_id, status_id, uploaded_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', ('doc2.pdf', 'uploads/doc2.pdf', 2, 2, 2, 2, 1))
+
+    # Check and insert test issues with deadlines
+    issue_count = conn.execute('SELECT COUNT(*) FROM issues').fetchone()[0]
+    if issue_count == 0:
+        conn.execute('''
+            INSERT INTO issues (title, description, project_id, site_id, status_id, reported_by, deadline)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', ('Test Issue 1', 'Description 1', 1, 1, 1, 1, '2025-05-14'))
+        conn.execute('''
+            INSERT INTO issues (title, description, project_id, site_id, status_id, reported_by, deadline)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', ('Test Issue 2', 'Description 2', 1, 1, 1, 1, '2025-05-15'))
+        conn.execute('''
+            INSERT INTO issues (title, description, project_id, site_id, status_id, reported_by, deadline)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', ('Test Issue 3', 'Description 3', 2, 2, 2, 1, '2025-05-16'))
+
     conn.commit()
     conn.close()
 
@@ -295,26 +362,32 @@ def get_dashboard_stats():
     conn = get_db_connection()
     total_docs = conn.execute('SELECT COUNT(*) FROM documents').fetchone()[0]
     print(f"Total documents in database: {total_docs}")  # Debug log
+    documents_by_type = conn.execute('''
+        SELECT dt.type_name, COUNT(d.id) as count
+        FROM documents d
+        JOIN document_types dt ON d.document_type_id = dt.id
+        GROUP BY dt.id, dt.type_name
+    ''').fetchall()
+    print(f"Documents by type: {[dict(row) for row in documents_by_type]}")  # Debug log
+    documents_by_project = conn.execute('''
+        SELECT p.project_name, COUNT(d.id) as count
+        FROM documents d
+        JOIN projects p ON d.project_id = p.id
+        GROUP BY p.id, p.project_name
+    ''').fetchall()
+    print(f"Documents by project: {[dict(row) for row in documents_by_project]}")  # Debug log
+    documents_by_status = conn.execute('''
+        SELECT st.status_name, COUNT(d.id) as count
+        FROM documents d
+        JOIN statuses st ON d.status_id = st.id
+        GROUP BY st.id, st.status_name
+    ''').fetchall()
+    print(f"Documents by status: {[dict(row) for row in documents_by_status]}")  # Debug log
     stats = {
         'total_documents': total_docs,
-        'documents_by_type': conn.execute('''
-            SELECT dt.type_name, COUNT(d.id) as count
-            FROM documents d
-            JOIN document_types dt ON d.document_type_id = dt.id
-            GROUP BY dt.id, dt.type_name
-        ''').fetchall(),
-        'documents_by_project': conn.execute('''
-            SELECT p.project_name, COUNT(d.id) as count
-            FROM documents d
-            JOIN projects p ON d.project_id = p.id
-            GROUP BY p.id, p.project_name
-        ''').fetchall(),
-        'documents_by_status': conn.execute('''
-            SELECT st.status_name, COUNT(d.id) as count
-            FROM documents d
-            JOIN statuses st ON d.status_id = st.id
-            GROUP BY st.id, st.status_name
-        ''').fetchall()
+        'documents_by_type': documents_by_type,
+        'documents_by_project': documents_by_project,
+        'documents_by_status': documents_by_status
     }
     conn.close()
     return stats
@@ -322,7 +395,8 @@ def get_dashboard_stats():
 def get_issue_stats():
     conn = get_db_connection()
     total_issues = conn.execute('SELECT COUNT(*) FROM issues').fetchone()[0]
-    current_date = datetime(2025, 5, 15, 20, 58)  # 08:58 PM +03, May 15, 2025
+    print(f"Total issues in database: {total_issues}")  # Debug log
+    current_date = datetime(2025, 5, 15, 21, 30)  # 09:30 PM +03, May 15, 2025
     issues_with_deadlines = conn.execute('''
         SELECT i.title, p.project_name, s.site_name, i.deadline
         FROM issues i
@@ -331,7 +405,9 @@ def get_issue_stats():
         WHERE i.deadline IS NOT NULL
         ORDER BY i.deadline ASC
     ''').fetchall()
+    print("Issues with deadlines:", [dict(issue) for issue in issues_with_deadlines])  # Debug log
     # Add status to each issue by converting sqlite3.Row to dict
+    issues_with_deadlines_list = []
     for issue in issues_with_deadlines:
         issue_dict = dict(issue)
         if issue_dict['deadline']:
@@ -342,29 +418,35 @@ def get_issue_stats():
                 issue_dict['status'] = 'Due Today'
             else:
                 issue_dict['status'] = 'Upcoming'
-        issues_with_deadlines[issues_with_deadlines.index(issue)] = issue_dict
+        issues_with_deadlines_list.append(issue_dict)
+    issues_by_status = conn.execute('''
+        SELECT st.status_name, COUNT(i.id) as count
+        FROM issues i
+        JOIN issue_statuses st ON i.status_id = st.id
+        GROUP BY st.id, st.status_name
+    ''').fetchall()
+    print(f"Issues by status: {[dict(row) for row in issues_by_status]}")  # Debug log
+    issues_by_project = conn.execute('''
+        SELECT p.project_name, COUNT(i.id) as count
+        FROM issues i
+        JOIN projects p ON i.project_id = p.id
+        GROUP BY p.id, p.project_name
+    ''').fetchall()
+    print(f"Issues by project: {[dict(row) for row in issues_by_project]}")  # Debug log
+    deadlines_count = conn.execute('''
+        SELECT deadline, COUNT(*) as count
+        FROM issues
+        WHERE deadline IS NOT NULL
+        GROUP BY deadline
+        ORDER BY deadline ASC
+    ''').fetchall()
+    print(f"Deadlines count: {[dict(row) for row in deadlines_count]}")  # Debug log
     stats = {
         'total_issues': total_issues,
-        'issues_by_status': conn.execute('''
-            SELECT st.status_name, COUNT(i.id) as count
-            FROM issues i
-            JOIN issue_statuses st ON i.status_id = st.id
-            GROUP BY st.id, st.status_name
-        ''').fetchall(),
-        'issues_by_project': conn.execute('''
-            SELECT p.project_name, COUNT(i.id) as count
-            FROM issues i
-            JOIN projects p ON i.project_id = p.id
-            GROUP BY p.id, p.project_name
-        ''').fetchall(),
-        'issues_with_deadlines': issues_with_deadlines,
-        'deadlines_count': conn.execute('''
-            SELECT deadline, COUNT(*) as count
-            FROM issues
-            WHERE deadline IS NOT NULL
-            GROUP BY deadline
-            ORDER BY deadline ASC
-        ''').fetchall()
+        'issues_by_status': issues_by_status,
+        'issues_by_project': issues_by_project,
+        'issues_with_deadlines': issues_with_deadlines_list,
+        'deadlines_count': deadlines_count
     }
     conn.close()
     return stats

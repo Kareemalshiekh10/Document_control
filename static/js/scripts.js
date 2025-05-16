@@ -1,4 +1,4 @@
-// Document Control JavaScript
+// scripts.js
 
 // Custom popup function
 function showPopup(message, type = 'success') {
