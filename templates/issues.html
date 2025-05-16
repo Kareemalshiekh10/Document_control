@@ -1,9 +1,19 @@
-<!-- issues.html -->
-
 {% extends 'base.html' %}
 
 {% block content %}
     <h2 class="text-2xl font-semibold text-gray-800 mb-6">Issue Tracking</h2>
+
+    <!-- Success/Error Messages -->
+    {% if success %}
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-2 mb-4 rounded-md" role="alert">
+            {{ success }}
+        </div>
+    {% endif %}
+    {% if error %}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-2 mb-4 rounded-md" role="alert">
+            {{ error }}
+        </div>
+    {% endif %}
 
     <!-- Report Issue Form -->
     <div class="form-container mb-6">
@@ -69,8 +79,7 @@
 
     <!-- Filter Form -->
     <div class="form-container mb-6">
-        <form id="filter-issues-form" method="POST" action="">
-            <input type="hidden" name="filter">
+        <form id="filter-issues-form" method="GET" action="{{ url_for('issues') }}">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label for="filter_issue_project" class="block mb-1">Project</label>
@@ -105,7 +114,7 @@
                 </div>
             </div>
             <button type="submit" class="bg-blue-600 text-white px-4 py-2 mt-4 rounded-md hover:bg-blue-700">Apply Filter</button>
-            <button type="button" id="clear-issue-filters" class="bg-gray-500 text-white px-4 py-2 mt-4 rounded-md hover:bg-gray-700">Clear Filters</button>
+            <a href="{{ url_for('issues') }}" class="bg-gray-500 text-white px-4 py-2 mt-4 rounded-md hover:bg-gray-700 inline-block">Clear Filters</a>
             <span id="filter-issues-spinner" class="loading-spinner"></span>
         </form>
     </div>
@@ -134,7 +143,20 @@
                         <td>{{ issue.description or 'N/A' }}</td>
                         <td>{{ issue.project_name }}</td>
                         <td>{{ issue.site_name }}</td>
-                        <td>{{ issue.status_name }}</td>
+                        <td>
+                            <!-- Debug: Print status_id for this issue -->
+                            <!-- Issue status_id: {{ issue.status_id }} -->
+                            <form method="POST" action="{{ url_for('update_issue_status', project=filters.project, site=filters.site, status=filters.status, date=filters.date) }}" class="inline-block">
+                                <input type="hidden" name="issue_id" value="{{ issue.id }}">
+                                <select name="status" class="border p-1 rounded-md focus:outline-none focus:border-blue-500" onchange="this.form.submit()">
+                                    {% for status in issue_statuses %}
+                                        <!-- Debug: Print status.id for comparison -->
+                                        <!-- Status id: {{ status.id }} -->
+                                        <option value="{{ status.id }}" {% if issue.status_id == status.id %}selected{% endif %}>{{ status.status_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </td>
                         <td>{{ issue.username }}</td>
                         <td>{{ issue.deadline or 'N/A' }}</td>
                         <td>{{ issue.created_at }}</td>
@@ -153,7 +175,7 @@
                             {% endif %}
                         </td>
                         <td class="flex items-center space-x-2">
-                            <form class="delete-issue-form inline-flex" method="POST" action="{{ url_for('delete_issue_route', issue_id=issue.id) }}">
+                            <form class="delete-issue-form inline-flex" method="POST" action="{{ url_for('delete_issue_route', issue_id=issue.id, project=filters.project, site=filters.site, status=filters.status, date=filters.date) }}">
                                 <button type="submit" class="bg-red-600 text-white px-2 py-1 rounded-md hover:bg-red-700">Delete</button>
                                 <span class="delete-issue-spinner loading-spinner"></span>
                             </form>

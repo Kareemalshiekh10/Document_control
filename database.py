@@ -2,15 +2,31 @@ import psycopg2
 from psycopg2.extras import DictCursor
 import os
 from datetime import datetime
+import urllib.parse
 
-# PostgreSQL database configuration
-DATABASE = {
-    'dbname': 'document_control',
-    'user': 'doc_user',
-    'password': 'asdfgh123!@#',
-    'host': 'localhost',
-    'port': '5432'
-}
+# Use DATABASE_URL from environment (set by Render)
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+if DATABASE_URL:
+    # Parse the DATABASE_URL
+    parsed_url = urllib.parse.urlparse(DATABASE_URL)
+    DATABASE = {
+        'dbname': parsed_url.path[1:],  # Remove the leading '/'
+        'user': parsed_url.username,
+        'password': parsed_url.password,
+        'host': parsed_url.hostname,
+        'port': parsed_url.port,
+        'sslmode': 'require'
+    }
+else:
+    # Fallback for local development
+    DATABASE = {
+        'dbname': 'document_control',
+        'user': 'doc_user',
+        'password': 'asdfgh123!@#',
+        'host': 'localhost',
+        'port': '5432'
+    }
 
 def get_db_connection():
     conn = psycopg2.connect(**DATABASE, cursor_factory=DictCursor)
@@ -178,14 +194,15 @@ def init_db():
     cursor.execute('SELECT COUNT(*) FROM documents')
     document_count = cursor.fetchone()[0]
     if document_count == 0:
+        uploads_dir = os.path.join(os.getcwd(), 'uploads')
         cursor.execute('''
             INSERT INTO documents (filename, file_path, document_type_id, project_id, site_id, status_id, uploaded_by)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ''', ('doc1.pdf', 'uploads/doc1.pdf', 1, 1, 1, 1, 1))
+        ''', ('doc1.pdf', os.path.join(uploads_dir, 'doc1.pdf'), 1, 1, 1, 1, 1))
         cursor.execute('''
             INSERT INTO documents (filename, file_path, document_type_id, project_id, site_id, status_id, uploaded_by)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ''', ('doc2.pdf', 'uploads/doc2.pdf', 2, 2, 2, 2, 1))
+        ''', ('doc2.pdf', os.path.join(uploads_dir, 'doc2.pdf'), 2, 2, 2, 2, 1))
 
     # Check and insert test issues with deadlines
     cursor.execute('SELECT COUNT(*) FROM issues')
@@ -333,7 +350,8 @@ def get_all_issues(filters=None):
     conn = get_db_connection()
     cursor = conn.cursor()
     query = '''
-        SELECT i.id, i.title, i.description, p.project_name, s.site_name, st.status_name, u.username, i.deadline, i.created_at
+        SELECT i.id, i.title, i.description, p.project_name, s.site_name, st.status_name, st.id as status_id,
+               u.username, i.deadline, i.created_at
         FROM issues i
         JOIN projects p ON i.project_id = p.id
         JOIN sites s ON i.site_id = s.id
@@ -414,6 +432,20 @@ def delete_issue(issue_id):
     conn.commit()
     conn.close()
 
+def update_issue_status(issue_id, status_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE issues SET status_id = %s WHERE id = %s', (status_id, issue_id))
+        conn.commit()
+        affected_rows = cursor.rowcount
+        cursor.close()
+        conn.close()
+        return affected_rows > 0  # Returns True if the update was successful
+    except Exception as e:
+        print(f"Error updating issue status: {e}")
+        return False
+
 def get_dashboard_stats():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -459,9 +491,9 @@ def get_issue_stats():
     cursor.execute('SELECT COUNT(*) FROM issues')
     total_issues = cursor.fetchone()[0]
     print(f"Total issues in database: {total_issues}")
-    current_date = datetime.now()  # Use current date instead of hardcoded
+    current_date = datetime(2025, 5, 16, 14, 53)  # 05:53 PM +03, May 16, 2025
     cursor.execute('''
-        SELECT i.title, p.project_name, s.site_name, i.deadline
+        SELECT i.id, i.title, p.project_name, s.site_name, i.deadline
         FROM issues i
         JOIN projects p ON i.project_id = p.id
         JOIN sites s ON i.site_id = s.id
